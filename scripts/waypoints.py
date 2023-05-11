@@ -55,7 +55,7 @@ if __name__ == '__main__':
     print('Fight Controller connection ready')
 
     # waypoints
-    waypoints = [(0.0,0.0,2.0),(5.0,5.0,2.0)]#,(2.0,2.0,2.0),(3.0,3.0,2.0),(0.0,0.0,2.0)]
+    waypoints = [(0.0,0.0,2.0),(5.0,5.0,2.0),(-5.0,5.0,2.0),(-5.0,-5.0,2.0),(5.0,-5.0,2.0)] # square
     send_pose = PoseStamped()
     send_pose.pose.position.x = waypoints[0][0]
     send_pose.pose.position.y = waypoints[0][1]
@@ -95,6 +95,7 @@ if __name__ == '__main__':
         z_err = current_pose.pose.position.z - send_pose.pose.position.z
 
         # state machine
+        print('state:%d'%state)
         if state == 0:      # mode enable every 5 secs if not already in mode
             if(current_state.mode != 'OFFBOARD' and (rospy.Time.now() - last_req) > rospy.Duration(5.0)):
                 if(set_mode_client.call(offb_set_mode).mode_sent == True):
@@ -112,11 +113,11 @@ if __name__ == '__main__':
         elif state == 2:        # go to waypoints through the list
             # check if already in position
             if abs(x_err) <= dist_thresh:   # check x
-                print('x coords aligned',x_err)
+                print('x coords aligned: %.3f'%x_err)
                 if abs(y_err) <= dist_thresh:   # check y
-                    print('y coords aligned',y_err)
+                    print('y coords aligned: %.3f'%y_err)
                     if abs(z_err) <= dist_thresh:   # check z
-                        print('z aligned',z_err)
+                        print('z aligned: %.3f'%z_err)
                         print('ALIGNED')
                         if current_wp < len(waypoints) and once[current_wp]:    # check if last waypoint and already checked
                             print('################ To Next Point ################')
@@ -127,7 +128,11 @@ if __name__ == '__main__':
                             once[current_wp] = False    # change only once
                             current_wp += 1
                         else:
+                            print('################ To Next Point ################')
                             state = 3   # go back to first point
+                            send_pose.pose.position.x = waypoints[0][0]
+                            send_pose.pose.position.y = waypoints[0][1]
+                            send_pose.pose.position.z = waypoints[0][2]
             local_pose_pub.publish(send_pose)
         elif state == 3:    # go to initial point
             # check if already in point
@@ -136,9 +141,9 @@ if __name__ == '__main__':
                 if once[0]:
                     state = 4
                     once[0] = False
-            send_pose.pose.position.x = waypoints[0][0]
-            send_pose.pose.position.y = waypoints[0][1]
-            send_pose.pose.position.z = waypoints[0][2]
+            # send_pose.pose.position.x = waypoints[0][0]
+            # send_pose.pose.position.y = waypoints[0][1]
+            # send_pose.pose.position.z = waypoints[0][2]
             local_pose_pub.publish(send_pose)
         elif state == 4:    # land command
             # try to land every 5 secs
@@ -147,8 +152,20 @@ if __name__ == '__main__':
                     print('Landing...')
                     rospy.loginfo('LAND enable')
                 last_req = rospy.Time.now()
+                break   # finish ROS execution
         # local_pose_pub.publish(send_pose)
         print('current_pose: %.2f %.2f %.2f'%(current_pose.pose.position.x,current_pose.pose.position.y,current_pose.pose.position.z))
         print('send_pose:',send_pose.pose.position.x,send_pose.pose.position.y,send_pose.pose.position.z)
-        print('state:%d'%state)
         rate.sleep()
+
+    arm_cmd.value = False   # disarm
+    offb_set_mode.custom_mode = 'LAND'  # land mode
+    while current_state.mode != 'LAND' and current_state.armed:
+        if(rospy.Time.now() - last_req) > rospy.Duration(5.0):
+            if(set_mode_client.call(offb_set_mode).mode_sent == True):
+                rospy.loginfo('LAND enable')
+            last_req = rospy.Time.now()
+        else:           # disarming every 5 secs if armed
+            if(current_state.armed and (rospy.Time.now() - last_req) > rospy.Duration(5.0)):
+                if(arming_client.call(arm_cmd).success == True):
+                    rospy.loginfo('Vehicle disarmed')
