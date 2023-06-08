@@ -8,11 +8,8 @@ Nodo para hover del dron hector
 '''
 
 import rospy
-from hector_uav_msgs.msg import Altimeter
 from geometry_msgs.msg import Twist, Vector3, Quaternion
-from std_msgs.msg import Float32, UInt32, Int32, String
 from sensor_msgs.msg import Joy, Imu, Range
-from tf.transformations import euler_from_quaternion
 from hector_uav_msgs.srv import *
 from std_srvs.srv import *
 
@@ -81,7 +78,7 @@ class HoverDrone():
 		#print("y: " + str(self.position_y))
 		self.position_z = self.height
 		#print("z: " + str(self.position_z))
-		print("\n")
+		
 
 		#conditions for LT & RT
 		if self.controller_up < 0:
@@ -90,9 +87,11 @@ class HoverDrone():
 			self.desired_alt += self.controller_down
 		#conditions for LB & RB
 		if self.controller_yawl > 0:
-			self.yaw = 2.0
+			self.yaw = 1.5
 		elif self.controller_yawr > 0:
-			self.yaw = -2.0
+			self.yaw = -1.5
+		elif self.controller_yawr == 0 and self.controller_yawl == 0:
+			self.yaw = 0.0
 
 
 
@@ -108,6 +107,7 @@ class HoverDrone():
 	def main(self):
 		while not rospy.is_shutdown():
 			try:
+				print("hover and joy control enabled")
 				self.hover() 
 			except Exception as e:
 				print(e)
