@@ -7,3 +7,4 @@ The codes outside the drone_control folder are the ones developed for PX4 simula
 
 ![imagen](https://github.com/RoboticaInteligente8voTecCEM2023/drone_navigation/assets/67598380/a5925eef-d225-4834-8ff8-d8daaa189539)
 
+The folder is the ROS package for Hector simulator which includes the nodes programmed
